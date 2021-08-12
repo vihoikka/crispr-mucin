@@ -1,4 +1,4 @@
-# Scripts for analysing OD data from unpublished long term coevolution study (Almeida 2020.) Code by Ville Hoikkala.
+# Scripts for analysing OD data from unpublished long term coevolution study (Almeida 2021). Code by Ville Hoikkala.
 
 #### 1. Load data and libraries ####
 library(data.table)
