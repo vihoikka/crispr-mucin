@@ -2,10 +2,10 @@
 
 #### Load data and libraries ####
 library(data.table)
-dada <- fread('longerm_stats_vh_220620_updated.csv') #read as data table
+dada <- fread('datasets/longerm_stats_vh_220620_updated.csv') #read as data table
 
-dada_21 <- fread('longtermdata_spacers_270421.csv') #read as data table
-data_21_titers <- fread('aeromonas_titers_020621.csv',na.strings=c("","NA")) #read as data table
+dada_21 <- fread('datasets/longtermdata_spacers_270421.csv') #read as data table
+data_21_titers <- fread('datasets/aeromonas_titers_020621.csv',na.strings=c("","NA")) #read as data table
 
 #data_21 modification
 dada_21$totalspacers <- dada_21$spacers_C1 + dada_21$spacers_C2
@@ -28,21 +28,21 @@ data_21_titers_long <- melt(data_21_titers,
 data_21_titers_long <- na.omit(data_21_titers_long)
 
 #phage titers
-titers <- fread('phage_titers_280520.csv') #read as data table
+titers <- fread('datasets/phage_titers_280520.csv') #read as data table
 titers$z_prop <- titers$bac_z/titers$bac_tot
 titers$r_prop <- titers$bac_r/titers$bac_tot
 titers$bac_phage_difference <- titers$phage_titer - titers$bac_tot
 
 #spacer accumulation
-spacerTime <- fread('spacer_accumulation.csv')
+spacerTime <- fread('datasets/spacer_accumulation.csv')
 
 #bacterial isolate times
 columns <- c("sample","")
 
 #mutation file
-mutDada <- fread('mutCounts_070520.csv') #read as data table
+mutDada <- fread('datasets/mutCounts_070520.csv') #read as data table
 
-#Library preparations
+#Library preparations. Uncomment if installed.
 install.packages("ggplot2")
 install.packages("glmmTMB", repos="https://glmmTMB.github.io/glmmTMB/repos", type="binary")
 install.packages("splines")
@@ -57,7 +57,6 @@ install.packages("gamlss")
 install.packages("AICcmodavg")
 
 library(ggplot2)
-theme_update(plot.title = element_text(hjust = 0.5)) #make all headings centerized
 library(glmmTMB)
 library(splines)
 library(reshape2)
@@ -71,7 +70,7 @@ library(gamlss)          # defines pdf, cdf of ZIP
 library(AICcmodavg)
 library(dplyr)
 
-
+theme_update(plot.title = element_text(hjust = 0.5)) #make all ggplot2 headers centerized
 
 #### Arrange data ####
 #Remove NA's, transform to long format, calculate time relative to ancestor, create datasets for spacer analysis, subset in different samples
