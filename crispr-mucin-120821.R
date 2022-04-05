@@ -1,13 +1,13 @@
-# Scripts for analysing OD data from unpublished long term coevolution study (Almeida 2021). Code by Ville Hoikkala.
+# Scripts for analysing and plotting OD data from unpublished long term coevolution study (Almeida 2022). Code by Ville Hoikkala.
 
-#### 1. Load data and libraries ####
+#### Load data and libraries ####
 library(data.table)
-dada <- fread('datasets/longterm_stats_vh_220620_updated.csv') #read as data table
+dada <- fread('longerm_stats_vh_220620_updated.csv') #read as data table
 
-dada_21 <- fread('datasets/longtermdata_spacers_270421.csv') #read as data table. Additional data from 2021
+dada_21 <- fread('longtermdata_spacers_270421.csv') #read as data table
 data_21_titers <- fread('aeromonas_titers_020621.csv',na.strings=c("","NA")) #read as data table
 
-#data_21 modifications
+#data_21 modification
 dada_21$totalspacers <- dada_21$spacers_C1 + dada_21$spacers_C2
 dada_21$rep <- substr(dada_21$colony,1,2)
 dada_21$booleanNewSpacersVerbal <- ifelse(dada_21$totalspacers == 0, "=0", "More than 0")
@@ -28,19 +28,19 @@ data_21_titers_long <- melt(data_21_titers,
 data_21_titers_long <- na.omit(data_21_titers_long)
 
 #phage titers
-titers <- fread('datasets/phage_titers_280520.csv') #read as data table
+titers <- fread('phage_titers_280520.csv') #read as data table
 titers$z_prop <- titers$bac_z/titers$bac_tot
 titers$r_prop <- titers$bac_r/titers$bac_tot
 titers$bac_phage_difference <- titers$phage_titer - titers$bac_tot
 
 #spacer accumulation
-spacerTime <- fread('datasets/spacer_accumulation.csv')
+spacerTime <- fread('spacer_accumulation.csv')
 
 #bacterial isolate times
 columns <- c("sample","")
 
 #mutation file
-mutDada <- fread('datasets/mutCounts_070520.csv') #read as data table
+mutDada <- fread('mutCounts_070520.csv') #read as data table
 
 #Library preparations
 install.packages("ggplot2")
@@ -69,14 +69,14 @@ library(ggpubr)
 library(fitdistrplus)
 library(gamlss)          # defines pdf, cdf of ZIP
 library(AICcmodavg)
+library(dplyr)
 
 
-#### 2. Arrange data ####
+
+#### Arrange data ####
 #Remove NA's, transform to long format, calculate time relative to ancestor, create datasets for spacer analysis, subset in different samples
 
 # Only use isolates with OD data
-#dadaOD <- subset(dada, ctrl == "no" | sample == "B245") #remove controls
-#dadaOD <- subset(dada, sample != "B245") #don't remove controls (except B245)
 dadaOD <- na.omit(dada, cols=c("max_od.phage")) #NOTE: na.omit with cols requires a data table, not a data frame
 dadaOD$OD_diff_10.phage <- dadaOD$OD_diff.phage + 10 #add 10 to OD difference values
 dadaOD$OD_diff_10.nophage <- dadaOD$OD_diff.nophage + 10
@@ -90,6 +90,7 @@ dadaOD_long <- dadaOD %>%
   gather (key, value, 'plate.phage','plate.nophage','max_od.phage','max_od.nophage','OD_diff_10.phage', 'OD_diff_10.nophage', 'time.phage', 'time.nophage', 'timeDiff.phage', 'timeDiff.nophage') %>%
   separate(key, into = c("measurement","phage"), sep = "\\.") %>%
   spread(measurement, value)
+
 #change "phage" and "nophage" to "yes" and "no"
 dadaOD_long$phage[dadaOD_long$phage == "phage"] <- "yes"
 dadaOD_long$phage[dadaOD_long$phage == "nophage"] <- "no"
@@ -109,7 +110,6 @@ dadaODSpacers1long <- drop_na(dadaOD_long,C1_spacers)
 dadaODSpacersAlllong <- drop_na(dadaODSpacers1long,C2_spacers)
 dadaODSpacersAlllong$totalSpacers <- dadaODSpacersAlllong$C1_spacers + dadaODSpacersAlllong$C2_spacers
 
-
 # Subset into different treatments
 LW <- subset(dadaOD_long, sample == "LW")
 LW_M <- subset(dadaOD_long, sample == "LW_M")
@@ -119,45 +119,16 @@ SHIEH_M <- subset(dadaOD_long, sample == "Shieh_M")
 dadaMucin <- subset(dadaOD_long, sample == "Shieh_M" | sample == "LW_M")
 dadaNoShieh <- subset(dadaOD_long, sample == "Shieh_M" | sample == "LW_M" | sample == "LW")
 
-#### 2021 EXTRA DATA titers####
-titers_21_plot_all <- ggplot(data = subset(data_21_titers_long, titer_type == "titer_total"), 
-                             aes(x=as.factor(sampling_day),y=value), group = species) +
-  # geom_line(aes(color=condition)) +
-  stat_summary(aes(y = value, group = species, color= species), fun=mean, geom="line") +
-  geom_point(aes(color = species), alpha = 0.5) +
-  # geom_line(aes(color = rep, linetype = rep), size = 0.8, alpha = 0.9) +
-  ylab("Titer") +
-  xlab("Sampling day") +
-  scale_y_continuous(trans='log10') +
-  facet_grid(~condition_alt) +
-  theme_minimal() +
-  scale_colour_manual(values=cbPalette)
-titers_21_plot_all
 
-ggsave(titers_21_plot_all, filename = "figs/titers_aeromonasExp_all.png", width = 16, height = 3)
+samplesNames <- c(
+  `LW` = "Lake water",
+  `LW_M` = "Lake water + mucin",
+  `Shieh` = "Shieh",
+  `Shieh_M` = "Shieh + mucin"
+)
 
-
-titers_21_plot <- ggplot(data = subset(data_21_titers_long, 
-                                       titer_type == "titer_total" &
-                                         (condition_alt == "F. col, Aer, phage" |
-                                            condition_alt == "F. col, phage" |
-                                            condition_alt == "F. col")), 
-                         aes(x=as.factor(sampling_day),y=value), group = species) +
-  # geom_line(aes(color=condition)) +
-  stat_summary(aes(y = value, group = species, color= species), fun=mean, geom="line") +
-  geom_point(aes(color = species), alpha = 0.5) +
-  # geom_line(aes(color = rep, linetype = rep), size = 0.8, alpha = 0.9) +
-  ylab("Titer") +
-  xlab("Sampling day") +
-  scale_y_continuous(trans='log10') +
-  facet_grid(~factor(condition_alt, levels=c('F. col','F. col, phage','F. col, Aer, phage'))) +
-  scale_colour_manual(values=cbPalette) +
-  theme_minimal() +
-  theme(legend.title=element_blank())
-titers_21_plot
-
-ggsave(titers_21_plot, filename = "figs/titers_aeromonasExp.png", width = 5, height = 2)
-
+cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#000000", "#CC79A7","#0072B2","#F0E442", "#D55E00")
+linetypes <- c("solid","dashed","twodash","dotted")
 
 #### Titers (Fig 2) ####
 
@@ -183,7 +154,7 @@ bac_titers <- ggplot(data = titers[!is.na(titers$bac_tot), ], aes(x=week,y=bac_t
   theme_bw()
 
 titerplot <- phage_titers / bac_titers + plot_annotation(tag_levels = 'A')
-ggsave(titerplot, filename = "figs/titerplot.png", width = 8.5, height = 5)
+ggsave(titerplot, filename = "manuscript_figs/fig_2_titerplot.png", width = 8.5, height = 5)
 
 # Phage titer models LW and LWM
 titer_stats_LW_all <- subset(titers, (sample == "LW" | sample == "LW_M") & week > 1 & ctrl == "no")
@@ -222,9 +193,9 @@ SuppFig_LW_bactiters <- ggplot(data = titer_stats_LW_all, aes(x = sample, y = ba
 
 #Save as supplementary figure
 SuppFig_LW_titers <- SuppFig_LW_phagetiters / SuppFig_LW_bactiters + plot_annotation(tag_levels = "A")
-ggsave(SuppFig_LW_titers, file = "manuscript_figs/SI/SuppFig_LW_titers.png", height = 8, width = 10.9)
+ggsave(SuppFig_LW_titers, file = "manuscript_figs/SI/SuppFig_2_LW_titers.png", height = 8, width = 10.9)
 
-#### Sp and morphs (Fig 3) ####
+#### Spacers and morphologies (Fig 3) ####
 spacerTime$noC1spacers <- spacerTime$screened - spacerTime$C1_spacers
 spacerTime$noC2spacers <- spacerTime$screened - spacerTime$C2_spacers
 
@@ -269,16 +240,14 @@ spacerTimeLongC2Per_screened <- spacerTimeLongC2_onlyScreened  %>%
   mutate(percentage = n / sum(n))
 
 
-ylim.prim <- c(0, 1)   # in this example, precipitation
-ylim.sec <- c(0, 30)    # in this example, temperature
+ylim.prim <- c(0, 1)
+ylim.sec <- c(0, 30)
 
 b <- diff(ylim.prim)/diff(ylim.sec)
 a <- b*(ylim.prim[1] - ylim.sec[1])
 
 #Combined C1 and C2 spacers over time
 spacers_time_plot3 <- ggplot(data = spacerTimeLongC1Per_screened, aes(x = week, y = percentage, fill = locus)) +
-  #geom_area(alpha=0.6 , size=0.5, colour="white", position = position_stack(reverse = TRUE)) +
-  #geom_area(data = subset(spacerTimeLongC1Per_screened, locus != "C1spacers"), aes(x = week, y = percentage), alpha=0.6 , size=0.5, colour="black", position = position_stack(reverse = F)) +
   geom_area(data = subset(spacerTimeLongC1Per_screened, locus == "C1_spacers"), aes(x = week, y = percentage), alpha=0.6 , size=0.5, colour="black", position = position_stack(reverse = F)) +
   geom_area(data = subset(spacerTimeLongC2Per_screened, locus == "C2_spacers"), aes(x = week, y = percentage), alpha=0.6 , size=0.5, colour="black", position = position_stack(reverse = F)) +
   facet_grid(~sample,  
@@ -286,7 +255,6 @@ spacers_time_plot3 <- ggplot(data = spacerTimeLongC1Per_screened, aes(x = week, 
   scale_fill_manual(values = c("#E69F00","#56B4E9","white"),name = "", labels = c("II-C spacers","VI-B spacers","No spacers"),guide = guide_legend(reverse=TRUE)) +
   xlab("Weeks") +
   theme_bw() +
-  #scale_y_continuous(sec.axis = sec_axis(~ . + 30, name = "Colonies screened")) +
   scale_y_continuous("Proportion of colonies with \n spacer acquisition (area graph)", sec.axis = sec_axis(~ (. - a)/b, name = "Number of \n colonies screened (bars)")) +
   geom_col(data = spacerTimeLongC1_onlyScreened, aes(y=a+screened*b), alpha = 0.08, fill = "red",position = "dodge") +
   theme( axis.line.y.right = element_line(color = "#D55E00"), 
@@ -294,7 +262,6 @@ spacers_time_plot3 <- ggplot(data = spacerTimeLongC1Per_screened, aes(x = week, 
          axis.text.y.right = element_text(color = "#D55E00"),
          axis.title.y.right = element_text(color = "#D55E00"),
          axis.text.x = element_text(angle = 0))
-#scale_x_continuous("week", labels = as.character(week), breaks = factor(week))
 
 #Relevel to put LW first
 dadaODSpacersAlllongSpacerPanel <- dadaODSpacersAlllong
@@ -302,7 +269,6 @@ dadaODSpacersAlllongSpacerPanel$sample <- relevel(dadaODSpacersAlllongSpacerPane
 
 plot_spacersSamplePanel <- ggplot(data = subset(dadaODSpacersAlllongSpacerPanel, ctrl == "no" & ancestral == "no"), aes(x=sample, y=totalSpacers)) +
   geom_jitter(width=0.2, alpha = 0.5, height = 0, size = 1.5, shape = 21, aes(fill = Morphology)) +
-  # ggtitle("Spacers and morphotypes") +
   xlab("Treatment") + ylab("Total spacers \n (II-C + VI-B)") +
   scale_y_continuous(breaks = seq(0, 10, len = 11)) +
   scale_fill_manual(values=cbPalette) +
@@ -315,13 +281,10 @@ percentMorphotypes <- subset(dadaOD_long, ctrl == "no" & ancestral == "no") %>% 
   mutate(ratio=scales::percent(n/sum(n)))
 plot_morphotypeProportions <- ggplot(data = subset(dadaOD_long, ctrl == "no" & ancestral == "no"), aes(x=sample,fill=Morphology)) + 
   geom_bar(position = "fill") +
-  # geom_text(data = percentMorphotypes, aes(label = ratio, y = 0.4), position = "stack") +
-  #geom_text(data = percentMorphotypes, aes(y=n, label = ratio),position=position_stack(0.5)) +
   ggtitle("Morphotypes") +
   scale_fill_manual(values=cbPalette) +
   ylab("Proportion") +
   xlab("Treatment") +
-  # scale_x_discrete(labels=c("LW","LW+M","Shieh","Shieh+M"))+
   theme_bw()
 
 #Make mutations long (syn vs nonsyn)
@@ -332,7 +295,6 @@ mutData_long <- melt(mutDada,
 )
 
 
-library(ggrepel)
 plot_mutTypes <- ggplot(data = mutData_long, aes(x=Condition, y=count, group = sample, fill = mutation_type)) +
   stat_summary(fun = mean, geom = "bar", position = position_dodge()) +
   theme(axis.text.x = element_text(angle = 45)) +
@@ -388,7 +350,23 @@ fig_4A <- ggplot(data = subset(dadaOD_long, ctrl == "no"), aes(x=sample, y=max_o
   theme(axis.text.x = element_text(angle = 90, vjust = 0.3, hjust=1),
         plot.title = element_text(hjust = 0.5)) +
   scale_fill_manual(values=cbPalette)
-#  theme_bw()
+
+fig_4A_time <- ggplot(data = subset(dadaOD_long, ctrl == "no"), aes(x=sample, y=time)) +
+  geom_boxplot(width=0.5, outlier.alpha = 0) +
+  geom_jitter(data = subset(dadaOD_long, ctrl == "no"), aes(fill = Morphology), alpha = 0.8, width = 0.1, height = 0, shape = 21) +
+  labs(shape="") +
+  xlab("Treatment") + ylab("Time to ODmax") +
+  ggtitle("Phage resistance") +
+  theme(axis.title.x = element_blank()) +
+  facet_grid(~phage,
+             labeller = as_labeller(c(
+               "yes" = "Phage",
+               "no" = "No phage")
+             )) +
+  scale_x_discrete(labels=c("Ancestor","LW","LW+M","Shieh","Shieh+M")) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.3, hjust=1),
+        plot.title = element_text(hjust = 0.5)) +
+  scale_fill_manual(values=cbPalette)
 
 #Controls
 fig_4B <- ggplot(data = subset(dadaOD_long, sample == "B245" | ctrl == "yes"), aes(x=phage, y=max_od)) +
@@ -405,12 +383,28 @@ fig_4B <- ggplot(data = subset(dadaOD_long, sample == "B245" | ctrl == "yes"), a
   scale_color_manual(values=cbPalette) +
   theme_bw()
 
+fig_4B_time <- ggplot(data = subset(dadaOD_long, sample == "B245" | ctrl == "yes"), aes(x=phage, y=time)) +
+  geom_boxplot(width=0.5, outlier.alpha = 0) +
+  geom_line(aes(group = sample, linetype = sample, color = sample), size = 0.8, alpha = 0.8, stat  = "summary") +
+  geom_jitter(aes(fill = sample), alpha = 0.7, width = 0.1, height = 0, size = 3, shape = 21) +
+  labs(shape="") +
+  ggtitle("Control samples") +
+  xlab("") + ylab("Time to ODmax") +
+  theme(axis.title.x = element_blank()) +
+  scale_x_discrete(labels=c("No phage","Phage")) +
+  theme(axis.text.x = element_text(angle = 45)) +
+  scale_fill_manual(values=cbPalette) +
+  scale_color_manual(values=cbPalette) +
+  theme_bw()
+
 fig4 <- fig_4A + fig_4B +plot_annotation(tag_levels = "A")
 ggsave(fig4, filename = "manuscript_figs/fig4.png", width = 9, height = 4)
 
+fig4_time <- fig_4A + fig_4A_time + fig_4B + fig_4B_time + plot_annotation(tag_levels = "A")
+ggsave(fig4_time, filename = "manuscript_figs/fig4_time.png", width = 9, height = 6)
 
 
-#### Spacers / morphology (Fig 5) ####
+#### Spacers / morphology (Fig 5) and associated models ####
 
 phageFacetNames <- c(
   `yes` = "With phage",
@@ -436,6 +430,22 @@ booleanSpacerPlot_maxOD_LWM <- ggplot(data = subset(dadaODSpacersAlllong, sample
   xlab("") +
   scale_x_discrete(labels=c("No new\nspacers","One or more\nnew spacers"))
 
+booleanSpacerPlot_maxOD_LWM_time <- ggplot(data = subset(dadaODSpacersAlllong, sample == "LW_M"), 
+                                           aes(x = booleanNewSpacers, y = time, fill = Morphology, label = id)) +
+  geom_boxplot(outlier.alpha = 0) +
+  geom_jitter(height = 0, width = 0.05, aes(fill = Morphology), size = 2, alpha = 0.5, shape = 21) +
+  scale_shape_manual(values=c(21,22)) +
+  scale_fill_manual(values=cbPalette) +
+  labs(
+    x = "New spacers",
+    y = "TIme to max OD"
+  ) +
+  facet_grid(~phage,
+             labeller = as_labeller(phageFacetNames)) +
+  ggtitle("Lake water + mucin") +
+  xlab("") +
+  scale_x_discrete(labels=c("No new\nspacers","One or more\nnew spacers"))
+
 
 booleanSpacerPlot_maxOD_ShiehM <- ggplot(data = subset(dadaODSpacersAlllong, sample == "Shieh_M"), 
                                          aes(x = booleanNewSpacers, y = max_od, fill = Morphology, label = id)) +
@@ -453,10 +463,68 @@ booleanSpacerPlot_maxOD_ShiehM <- ggplot(data = subset(dadaODSpacersAlllong, sam
   ggtitle("Shieh + mucin") +
   scale_x_discrete(labels=c("No new\nspacers","One or more\nnew spacers"))
 
+booleanSpacerPlot_maxOD_ShiehM_time <- ggplot(data = subset(dadaODSpacersAlllong, sample == "Shieh_M"), 
+                                              aes(x = booleanNewSpacers, y = time, fill = Morphology, label = id)) +
+  geom_boxplot(outlier.alpha = 0) +
+  geom_jitter(height = 0, width = 0.05, aes(fill = Morphology), size = 2, alpha = 0.5, shape = 21) +
+  scale_shape_manual(values=c(21,22)) +
+  scale_fill_manual(values=cbPalette) +
+  labs(
+    x = "",
+    y = "Time to max OD"
+  ) +
+  facet_grid(~phage,
+             labeller = as_labeller(phageFacetNames)) + 
+  ggtitle("Shieh + mucin") +
+  scale_x_discrete(labels=c("No new\nspacers","One or more\nnew spacers"))
+
 
 spacerPlots <- booleanSpacerPlot_maxOD_LWM / booleanSpacerPlot_maxOD_ShiehM + plot_annotation(tag_levels = "A")
-ggsave(spacerPlots, filename = "manuscript_figs/fig5.png", width = 7.5, height = 6)
-#### Spacer counts competition experiment (fig 6) ####
+ggsave(spacerPlots, filename = "manuscript_figs/fig_5.png", width = 7.5, height = 6)
+
+spacerPlots_time <- (booleanSpacerPlot_maxOD_LWM | booleanSpacerPlot_maxOD_LWM_time) / (booleanSpacerPlot_maxOD_ShiehM | booleanSpacerPlot_maxOD_ShiehM_time) + plot_annotation(tag_levels = "A")
+ggsave(spacerPlots_time, filename = "manuscript_figs/fig_5_time.png", width = 10, height = 7)
+
+#Models for fig 5
+#LWM with phage
+spacers_morphotype_LWM_phage_model <- glmmTMB(max_od ~ booleanNewSpacers * Morphology+ (1|plate) + (1|rep), 
+                                              family = Gamma("log"),
+                                              data = subset(dadaODSpacersAlllong, sample == "LW_M" & phage == "yes"))
+summary(spacers_morphotype_LWM_phage_model)
+AIC(spacers_morphotype_LWM_phage_model)
+
+#LWM without phage
+spacers_morphotype_LWM_noPhage_model <- glmmTMB(max_od ~ booleanNewSpacers * Morphology + (1|plate) + (1|rep), 
+                                                family = Gamma("log"), 
+                                                data = subset(dadaODSpacersAlllong, sample == "LW_M" & phage == "no"))
+summary(spacers_morphotype_LWM_noPhage_model)
+AIC(spacers_morphotype_LWM_noPhage_model)
+
+hist(subset(dadaODSpacersAlllong, sample == "LW_M" & phage == "no")$max_od)
+
+#ShiehM with phage
+spacers_morphotype_ShiehM_phage_model <- glmmTMB(max_od ~ booleanNewSpacers * Morphology + (1|plate) + (1|rep), 
+                                                 family = Gamma("log"),  
+                                                 data = subset(dadaODSpacersAlllong, sample == "Shieh_M" & phage == "yes"))
+summary(spacers_morphotype_ShiehM_phage_model)
+AIC(spacers_morphotype_ShiehM_phage_model)
+
+#ShiehM without phage
+spacers_morphotype_ShiehM_noPhage_model <- glmmTMB(max_od ~ booleanNewSpacers * Morphology + (1|plate) + (1|rep), 
+                                                   family = Gamma("log"), 
+                                                   data = subset(dadaODSpacersAlllong, sample == "Shieh_M" & phage == "no"))
+summary(spacers_morphotype_ShiehM_noPhage_model)
+AIC(spacers_morphotype_ShiehM_noPhage_model)
+
+#ShiehM with and without phagae combined
+spacers_morphotype_ShiehM_pooled_model <- glmmTMB(max_od ~ booleanNewSpacers * Morphology * phage+ (1|plate) + (1|rep) + (1|id), 
+                                                  family = Gamma("log"), 
+                                                  data = subset(dadaODSpacersAlllong, sample == "Shieh_M"))
+summary(spacers_morphotype_ShiehM_pooled_model)
+AIC(spacers_morphotype_ShiehM_pooled_model)
+
+
+#### Aeromonas experiment (Fig 6) and associated models ####
 spacerdata_21_totalspacers_plot <- ggplot(data = dada_21_subset, aes(x=Condition, y=totalspacers)) +
   geom_boxplot() +
   geom_jitter(aes(colour = morphology), alpha = 0.5, width = 0.1, height = 0) +
@@ -504,26 +572,33 @@ spacerdata_21_totalspacers_plot_C2 <- ggplot(data = dada_21_subset, aes(x=Condit
         plot.title = element_text(hjust = 0.5))
 spacerdata_21_totalspacers_plot_C2
 
-both_spacers_aeromonas <- spacerdata_21_totalspacers_plot + spacerdata_21_totalspacers_plot_C1 + spacerdata_21_totalspacers_plot_C2
+fig_6_both_spacers_aeromonas <- spacerdata_21_totalspacers_plot + spacerdata_21_totalspacers_plot_C1 + spacerdata_21_totalspacers_plot_C2
 
-ggsave(spacerdata_21_totalspacers_plot, filename = "figs/aeromonas/aeromonas_totalspacers.png", width = 4, height = 3)
-ggsave(both_spacers_aeromonas, filename = "figs/aeromonas/both_spacers_aeromonas.png", width = 8, height = 3)
+ggsave(fig_6_both_spacers_aeromonas, filename = "manuscript_figs/Fig_6_both_spacers_aeromonas.png", width = 8, height = 3)
 
+#MODELS
 
-dada_21$Condition <- relevel(as.factor(dada_21$Condition),ref = "columnare_phage") # Declare columnare_aeromonas as reference
+dada_21$Condition <- relevel(as.factor(dada_21$Condition),ref = "columnare_phage") # Declare columnare with phage (no aeromonas) as reference
 
-#model: total number of spacers explained by condition
+#model 1: total number of spacers explained by condition
 dada_21_model1 <- glmmTMB(totalspacers ~ Condition + (1|rep) + (1|day), 
                           family = nbinom2,
                           ziformula=~0,
                           data = dada_21_subset)
 summary(dada_21_model1)
 AIC(dada_21_model1)
-#### upplementary plots ####
+
+#model 2: probability of having aq explained by condition
+
+dada_21_model2 <- glmmTMB(as.numeric(booleanNewSpacers) ~ Condition + (1|rep) + (1|day), 
+                          family = binomial,
+                          data = dada_21)
+
+summary(dada_21_model2)
+AIC(dada_21_model2)
+#### Supplementary plots and associated models ####
 
 #Effect of time on OD in follow-up experiment
-point_alpha = 0.7
-
 plot_extractTimeAndTimetoMaxODP <- ggplot(data = subset(dadaOD_long, phage == "yes" & ancestral == "no"), aes(x = extractTime, y = time)) +
   geom_point(size = 1.5, alpha = point_alpha, shape = 21) +
   facet_grid(~sample) +
@@ -549,9 +624,26 @@ plot_extractTimeAndMaxODNP <- ggplot(data = subset(dadaOD_long, phage == "no" & 
   xlab("Extraction time") + ylab("")
 
 extractionTimePlots <- (plot_extractTimeAndTimetoMaxODP | plot_extractTimeAndTimetoMaxODNP) / (plot_extractTimeAndMaxODP | plot_extractTimeAndMaxODNP) +
-  plot_annotation("Effect of extraction time on growth", caption = 'Y-axis relative to ancestor (red line)')
+  plot_annotation("Effect of extraction time on growth")
 ggsave(extractionTimePlots, filename = "manuscript_figs/SI/extractTimePlots.png", height = 4, width = 8)
 
+
+titers_21_plot_all <- ggplot(data = subset(data_21_titers_long, titer_type == "titer_total"), 
+                             aes(x=as.factor(sampling_day),y=value), group = species) +
+  stat_summary(aes(y = value, group = species, color= species), fun=mean, geom="line") +
+  geom_point(aes(color = species), alpha = 0.5) +
+  ylab("Titer") +
+  xlab("Sampling day") +
+  scale_y_continuous(trans='log10') +
+  facet_grid(~condition_alt) +
+  theme_minimal() +
+  scale_colour_manual(values=cbPalette)
+titers_21_plot_all
+
+ggsave(titers_21_plot_all, filename = "manuscript_figs/SI/SI_fig_4_titers_aeromonasExp_all.png", width = 16, height = 3)
+
+
+library(lme4)
 #Modeling extraction time on ODMAX
 summary(lmer(max_od ~ extractTime + (1|rep), data = subset(dadaOD_long, phage == "no" & ancestral == "no" & sample == "LW")))
 summary(lmer(max_od ~ extractTime + (1|rep), data = subset(dadaOD_long, phage == "no" & ancestral == "no" & sample == "LW_M")))
@@ -576,62 +668,31 @@ summary(lmer(time ~ extractTime + (1|rep), data = subset(dadaOD_long, phage == "
 
 #### Models ####
 
-#LWM with phage
-spacers_morphotype_LWM_phage_model <- glmmTMB(max_od ~ booleanNewSpacers * Morphology+ (1|plate) + (1|rep), 
-                                              family = Gamma("log"),
-                                              data = subset(dadaODSpacersAlllong, sample == "LW_M" & phage == "yes"))
-summary(spacers_morphotype_LWM_phage_model)
-AIC(spacers_morphotype_LWM_phage_model)
-
-#LWM without phage
-spacers_morphotype_LWM_noPhage_model <- glmmTMB(max_od ~ booleanNewSpacers * Morphology + (1|plate) + (1|rep), 
-                                                family = Gamma("log"), 
-                                                data = subset(dadaODSpacersAlllong, sample == "LW_M" & phage == "no"))
-summary(spacers_morphotype_LWM_noPhage_model)
-AIC(spacers_morphotype_LWM_noPhage_model)
-
-hist(subset(dadaODSpacersAlllong, sample == "LW_M" & phage == "no")$max_od)
-
-#ShiehM with phage
-spacers_morphotype_ShiehM_phage_model <- glmmTMB(max_od ~ booleanNewSpacers * Morphology + (1|plate) + (1|rep), 
-                                                 family = Gamma("log"),  
-                                                 data = subset(dadaODSpacersAlllong, sample == "Shieh_M" & phage == "yes"))
-summary(spacers_morphotype_ShiehM_phage_model)
-AIC(spacers_morphotype_ShiehM_phage_model)
-
-#ShiehM without phage
-spacers_morphotype_ShiehM_noPhage_model <- glmmTMB(max_od ~ booleanNewSpacers * Morphology + (1|plate) + (1|rep), 
-                                                   family = Gamma("log"), 
-                                                   data = subset(dadaODSpacersAlllong, sample == "Shieh_M" & phage == "no"))
-summary(spacers_morphotype_ShiehM_noPhage_model)
-AIC(spacers_morphotype_ShiehM_noPhage_model)
-
-#ShiehM with and without phagae combined
-spacers_morphotype_ShiehM_pooled_model <- glmmTMB(max_od ~ booleanNewSpacers * Morphology * phage+ (1|plate) + (1|rep) + (1|id), 
-                                                  family = Gamma("log"), 
-                                                  data = subset(dadaODSpacersAlllong, sample == "Shieh_M"))
-summary(spacers_morphotype_ShiehM_pooled_model)
-AIC(spacers_morphotype_ShiehM_pooled_model)
-
-
 # Follow-up growth experiment overall (fig 4A)
 dadaOD_long$sample <- relevel(dadaOD_long$sample,ref = "B245") # Declare B245 as reference
 hist(subset(dadaOD_long, ctrl =="no")$max_od)
-treatODphage_nonrelative <- glmmTMB(max_od ~ phage * sample + (1|rep) + (1|id), 
+treatODphage_nonrelative <- glmmTMB(max_od ~ phage * sample + (1|rep) + (1|id) + (1|time), 
                                     family = gaussian, 
                                     data = subset(dadaOD_long, ctrl =="no"))
 summary(treatODphage_nonrelative)
 AIC(treatODphage_nonrelative)
 
+treatODphage_nonrelative_phage <- glmmTMB(max_od ~ sample + (1|rep) + (1|id) + (1|time), 
+                                          family = gaussian, 
+                                          data = subset(dadaOD_long, ctrl =="no" & phage =="yes"))
+summary(treatODphage_nonrelative_phage)
+AIC(treatODphage_nonrelative_phage)
+
+#the same for time-to-ODmax
+hist(subset(dadaOD_long, ctrl =="no")$time)
+treatODphage_nonrelative_time <- glmmTMB(time ~ phage * sample + (1|rep), 
+                                         family = gaussian, 
+                                         data = subset(dadaOD_long, ctrl =="no"))
+summary(treatODphage_nonrelative_time)
+AIC(treatODphage_nonrelative_time)
+
 #controls (growth experiment, fig 4B)
 summary(lm(data = subset(dadaOD_long, ctrl == "yes" | ancestral == "yes"), max_od ~ phage*sample))
-
-
-#Controls
-
-summary(treatODphageCtrl)
-hist(subset(dadaOD_long, phage == "yes")$OD_diff_10)
-hist(subset(dadaOD_long, phage == "no")$OD_diff_10)
 
 
 ### 16-week experiment
@@ -640,3 +701,39 @@ summary(lm(data = subset(titers, week > 8 & (sample == "LW" | sample == "LW_M"))
 #LW and LW+M bacteria
 summary(lm(data = subset(titers, week > 1 & (sample == "LW" | sample == "LW_M")), bac_tot ~ sample))
 
+#Spacer accumulation in different settings
+dadaODSpacersAlllong$sample <- relevel(dadaODSpacersAlllong$sample,ref = "LW") # Declare LW_M as reference
+
+spacersTestLW_LWM_LW <- subset(dadaODSpacersAlllong, ancestral == "no" & ctrl == "no" & phage == "yes" & (sample == "LW" | sample =="LW_M"))
+spacersTestLW_LWM_ShiehMucin <- subset(dadaODSpacersAlllong, ancestral == "no" & ctrl == "no" & phage == "yes" & (sample == "LW_M" | sample =="Shieh_M"))
+
+spacersByTreatment_model_LW <- glmmTMB(totalSpacers ~ sample + (1|rep), family=nbinom2, spacersTestLW_LWM_LW)
+summary(spacersByTreatment_model)
+AIC(spacersByTreatment_model)
+
+spacersByTreatment_model_LW_ShiehM <- glmmTMB(totalSpacers ~ sample + (1|rep), family=nbinom2, spacersTestLW_LWM_ShiehMucin)
+summary(spacersByTreatment_model_LW_ShiehM)
+AIC(spacersByTreatment_model)
+
+#### Other ####
+#table for showing OD-max and time-to-OD-max
+od_table <- subset(dadaOD_long, ancestral == "no" & ctrl == "no")
+od_table <- select(od_table, sample,max_od,time,id,phage)
+od_table <- od_table[order(as.character(od_table$id)),]
+rownames(od_table) <- NULL
+write.csv(od_table, "od_metrics.csv")
+
+#correlation between OD-max and time-to-OD-max
+od_table_NA <- na.omit(od_table)
+
+cor(od_table_NA$max_od, od_table_NA$time)
+
+plot(od_table_NA$max_od, od_table_NA$time)
+
+cor.test(od_table_NA$max_od, od_table_NA$time)
+
+od_table_NA_phage <- subset(od_table_NA, phage == "yes")
+cor.test(od_table_NA_phage$max_od, od_table_NA_phage$time)
+
+od_table_NA_nophage <- subset(od_table_NA, phage == "no")
+cor.test(od_table_NA_nophage$max_od, od_table_NA_nophage$time)
