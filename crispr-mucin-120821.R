@@ -2,10 +2,16 @@
 
 #### Load data and libraries ####
 library(data.table)
-dada <- fread('datasets/longerm_stats_vh_220620_updated.csv') #read as data table
+datasourcefolder = "01_datasources"
+figs_folder = "02_figs"
+other_folder = "03_other"
+dir.create(datasourcefolder)
+dir.create(figs_folder)
+dir.create(other_folder)
+dada <- fread('data_input/data_2020.csv') #read as data table
 
-dada_21 <- fread('datasets/longtermdata_spacers_270421.csv') #read as data table
-data_21_titers <- fread('datasets/aeromonas_titers_020621.csv',na.strings=c("","NA")) #read as data table
+dada_21 <- fread('data_input/data_spacers_2021.csv') #read as data table
+data_21_titers <- fread('data_input/data_aeromonas_2021.csv',na.strings=c("","NA")) #read as data table
 
 #data_21 modification
 dada_21$totalspacers <- dada_21$spacers_C1 + dada_21$spacers_C2
@@ -28,49 +34,50 @@ data_21_titers_long <- melt(data_21_titers,
 data_21_titers_long <- na.omit(data_21_titers_long)
 
 #phage titers
-titers <- fread('datasets/phage_titers_280520.csv') #read as data table
+titers <- fread('phage_titers_280520.csv') #read as data table
 titers$z_prop <- titers$bac_z/titers$bac_tot
 titers$r_prop <- titers$bac_r/titers$bac_tot
 titers$bac_phage_difference <- titers$phage_titer - titers$bac_tot
 
 #spacer accumulation
-spacerTime <- fread('datasets/spacer_accumulation.csv')
+spacerTime <- fread('spacer_accumulation.csv')
 
 #bacterial isolate times
 columns <- c("sample","")
 
 #mutation file
-mutDada <- fread('datasets/mutCounts_070520.csv') #read as data table
+mutDada <- fread('mutCounts_070520.csv') #read as data table
 
-#Library preparations. Uncomment if installed.
-install.packages("ggplot2")
-install.packages("glmmTMB", repos="https://glmmTMB.github.io/glmmTMB/repos", type="binary")
-install.packages("splines")
-install.packages("reshape2")
-install.packages("tidyr")
-install.packages("dplyr")
-install.packages("patchwork")
-install.packages("ggrepel")
-install.packages("ggpubr")
-install.packages("fitdistrplus")
-install.packages("gamlss")
-install.packages("AICcmodavg")
+#Library preparations
+# install.packages("ggplot2")
+# install.packages("glmmTMB", repos="https://glmmTMB.github.io/glmmTMB/repos", type="binary")
+# install.packages("splines")
+# install.packages("reshape2")
+# install.packages("tidyr")
+# install.packages("dplyr")
+# install.packages("patchwork")
+# install.packages("ggrepel")
+# install.packages("ggpubr")
+# install.packages("fitdistrplus")
+# install.packages("gamlss")
+# install.packages("AICcmodavg")
+# 
+# library(ggplot2)
+# theme_update(plot.title = element_text(hjust = 0.5)) #make all headings centerized
+# library(glmmTMB)
+# library(splines)
+# library(reshape2)
+# library(tidyr)
+# library(dplyr)
+# library(patchwork)
+# library(ggrepel)
+# library(ggpubr)
+# library(fitdistrplus)
+# library(gamlss)          # defines pdf, cdf of ZIP
+# library(AICcmodavg)
+# library(dplyr)
 
-library(ggplot2)
-library(glmmTMB)
-library(splines)
-library(reshape2)
-library(tidyr)
-library(dplyr)
-library(patchwork)
-library(ggrepel)
-library(ggpubr)
-library(fitdistrplus)
-library(gamlss)          # defines pdf, cdf of ZIP
-library(AICcmodavg)
-library(dplyr)
 
-theme_update(plot.title = element_text(hjust = 0.5)) #make all ggplot2 headers centerized
 
 #### Arrange data ####
 #Remove NA's, transform to long format, calculate time relative to ancestor, create datasets for spacer analysis, subset in different samples
@@ -131,9 +138,9 @@ linetypes <- c("solid","dashed","twodash","dotted")
 
 #### Titers (Fig 2) ####
 
-phage_titers <- ggplot(data = titers[!is.na(titers$phage_titer)], aes(x=week,y=phage_titer)) +
+phage_titer_data = titers[!is.na(titers$phage_titer), ]
+phage_titers <- ggplot(data = phage_titer_data, aes(x=week,y=phage_titer)) +
   geom_line(aes(color = rep, linetype = rep), size = 0.8, alpha = 0.9) +
-  #  geom_line(aes(x=week, y=bac_tot, color = rep, linetype = rep, group = rep), size = 1, alpha = 0.3) +
   scale_y_continuous(trans='log10') +
   ylab("Phage (pfu/ml)") +
   facet_grid(~sample,  
@@ -142,7 +149,8 @@ phage_titers <- ggplot(data = titers[!is.na(titers$phage_titer)], aes(x=week,y=p
   theme_bw() +
   xlab("")
 
-bac_titers <- ggplot(data = titers[!is.na(titers$bac_tot), ], aes(x=week,y=bac_tot)) +
+bac_titer_data = titers[!is.na(titers$bac_tot),]
+bac_titers <- ggplot(data = bac_titer_data, aes(x=week,y=bac_tot)) +
   geom_line(aes(color = rep, linetype = rep, group = rep), size = 0.8, alpha = 0.9) +
   scale_y_continuous(trans='log10') +
   ylab("Bacteria (cfu/ml)") +
@@ -153,46 +161,15 @@ bac_titers <- ggplot(data = titers[!is.na(titers$bac_tot), ], aes(x=week,y=bac_t
   theme_bw()
 
 titerplot <- phage_titers / bac_titers + plot_annotation(tag_levels = 'A')
-ggsave(titerplot, filename = "manuscript_figs/fig_2_titerplot.png", width = 8.5, height = 5)
+ggsave(titerplot, filename = paste(figs_folder,"/fig2.png",sep=""), width = 8.5, height = 5)
 
-# Phage titer models LW and LWM
-titer_stats_LW_all <- subset(titers, (sample == "LW" | sample == "LW_M") & week > 1 & ctrl == "no")
-titer_stats_LW <- subset(titers, (sample == "LW" | sample == "LW_M") & week >= 9 & ctrl == "no")
-library(lme4)
-library(glmmTMB)
+# Extract data source files
+fig_2A_datasource = phage_titer_data[,c("sample","phage_titer", "rep")]
+fig_2B_datasource = bac_titer_data[,c("sample","bac_tot", "rep")]
+names(fig_2B_datasource)[2] = "bacterial_titer"
 
-model_phagetiter_LW_LWM_wk9_16 <- glmmTMB(data = titer_stats_LW, phage_titer ~ sample, family = Gamma("log"))
-summary(model_phagetiter_LW_LWM_wk9_16)
-AIC(model_phagetiter_LW_LWM_wk9_16)
-
-#Visualize results
-SuppFig_LW_phagetiters <- ggplot(data = titer_stats_LW_all, aes(x = sample, y = phage_titer)) +
-  geom_boxplot() +
-  geom_point(shape = 21, size = 2) +
-  facet_grid(~week) +
-  scale_y_continuous(trans='log10') +
-  ylab("Phage titer (pfu/ml)") +
-  xlab("Week") +
-  theme(axis.text.x = element_text(angle = 45))
-
-#Bacterial titer models in LW and LWM
-model_bacterial_titer_LW_LWM_wk9_16 <- glm(data = titer_stats_LW_all, bac_tot ~ sample)
-summary(model_bacterial_titer_LW_LWM_wk9_16)
-AIC(model_bacterial_titer_LW_LWM_wk9_16)
-
-#Visualize results
-SuppFig_LW_bactiters <- ggplot(data = titer_stats_LW_all, aes(x = sample, y = bac_tot)) +
-  geom_boxplot() +
-  geom_point(shape = 21, size = 2) +
-  facet_grid(~week) +
-  scale_y_continuous(trans='log10') +
-  ylab("Bacterial titer (cfu/ml)") +
-  xlab("Week") +
-  theme(axis.text.x = element_text(angle = 45))
-
-#Save as supplementary figure
-SuppFig_LW_titers <- SuppFig_LW_phagetiters / SuppFig_LW_bactiters + plot_annotation(tag_levels = "A")
-ggsave(SuppFig_LW_titers, file = "manuscript_figs/SI/SuppFig_2_LW_titers.png", height = 8, width = 10.9)
+write.csv(fig_2A_datasource, paste(datasourcefolder,"/fig_2A_datasource.csv", sep=""))
+write.csv(fig_2B_datasource, paste(datasourcefolder, "/fig_2B_datasource.csv", sep=""))
 
 #### Spacers and morphologies (Fig 3) ####
 spacerTime$noC1spacers <- spacerTime$screened - spacerTime$C1_spacers
@@ -266,7 +243,8 @@ spacers_time_plot3 <- ggplot(data = spacerTimeLongC1Per_screened, aes(x = week, 
 dadaODSpacersAlllongSpacerPanel <- dadaODSpacersAlllong
 dadaODSpacersAlllongSpacerPanel$sample <- relevel(dadaODSpacersAlllongSpacerPanel$sample,ref = "LW") # Declare B245 as reference
 
-plot_spacersSamplePanel <- ggplot(data = subset(dadaODSpacersAlllongSpacerPanel, ctrl == "no" & ancestral == "no"), aes(x=sample, y=totalSpacers)) +
+plot_spacersSamplePanel_data = subset(dadaODSpacersAlllongSpacerPanel, ctrl == "no" & ancestral == "no")
+plot_spacersSamplePanel <- ggplot(data = plot_spacersSamplePanel_data, aes(x=sample, y=totalSpacers)) +
   geom_jitter(width=0.2, alpha = 0.5, height = 0, size = 1.5, shape = 21, aes(fill = Morphology)) +
   xlab("Treatment") + ylab("Total spacers \n (II-C + VI-B)") +
   scale_y_continuous(breaks = seq(0, 10, len = 11)) +
@@ -319,7 +297,19 @@ plot_mutTypes
 fig3a <- spacers_time_plot3
 fig3bc <- (plot_spacersSamplePanel + plot_morphotypeProportions) + plot_spacer() + plot_layout(widths = c(2,2,1))
 fig3 <- fig3a / fig3bc + plot_annotation(tag_levels = 'A')
-ggsave(fig3, filename = "manuscript_figs/fig3.png", height = 5.5, width = 11)
+ggsave(fig3, filename = paste(figs_folder,"/fig3.png",sep=""), height = 5.5, width = 11)
+
+# Extract data source files
+fig_3A_IIC_datasource = spacerTimeLongC1Per_screened
+fig_3A_VIB_datasource = spacerTimeLongC2Per_screened
+fig_3B_datasource = plot_spacersSamplePanel_data[, c("sample", "totalSpacers","rep","Morphology")]
+fig_3C_datasource = percentMorphotypes
+
+write.csv(fig_3A_IIC_datasource, paste(datasourcefolder,"/fig_3A_IIC_datasource.csv", sep=""))
+write.csv(fig_3A_VIB_datasource, paste(datasourcefolder,"/fig_3A_VIB_datasource.csv", sep=""))
+write.csv(fig_3B_datasource, paste(datasourcefolder,"/fig_3B_datasource.csv", sep=""))
+write.csv(fig_3C_datasource, paste(datasourcefolder,"/fig_3C_datasource.csv", sep=""))
+
 
 #### Follow-up MAX OD (Fig 4) ####
 dadaOD_long$sample <- relevel(dadaOD_long$sample,ref = "B245") # Declare B245 as reference
@@ -333,7 +323,8 @@ plot_timeVsPhage <- ggplot(data = dadaOD_long, aes(x=sample, y=time)) +
   facet_grid(~phage) +
   theme(legend.position = "none") 
 
-fig_4A <- ggplot(data = subset(dadaOD_long, ctrl == "no"), aes(x=sample, y=max_od)) +
+fig4_A_data = subset(dadaOD_long, ctrl == "no")
+fig_4A <- ggplot(data = fig4_A_data, aes(x=sample, y=max_od)) +
   geom_boxplot(width=0.5, outlier.alpha = 0) +
   geom_jitter(data = subset(dadaOD_long, ctrl == "no"), aes(fill = Morphology), alpha = 0.8, width = 0.1, height = 0, shape = 21) +
   labs(shape="") +
@@ -368,7 +359,8 @@ fig_4A_time <- ggplot(data = subset(dadaOD_long, ctrl == "no"), aes(x=sample, y=
   scale_fill_manual(values=cbPalette)
 
 #Controls
-fig_4B <- ggplot(data = subset(dadaOD_long, sample == "B245" | ctrl == "yes"), aes(x=phage, y=max_od)) +
+fig_4B_data = subset(dadaOD_long, sample == "B245" | ctrl == "yes")
+fig_4B <- ggplot(data = fig_4B_data, aes(x=phage, y=max_od)) +
   geom_boxplot(width=0.5, outlier.alpha = 0) +
   geom_line(aes(group = sample, linetype = sample, color = sample), size = 0.8, alpha = 0.8, stat  = "summary") +
   geom_jitter(aes(fill = sample), alpha = 0.7, width = 0.1, height = 0, size = 3, shape = 21) +
@@ -382,38 +374,48 @@ fig_4B <- ggplot(data = subset(dadaOD_long, sample == "B245" | ctrl == "yes"), a
   scale_color_manual(values=cbPalette) +
   theme_bw()
 
-fig_4B_time <- ggplot(data = subset(dadaOD_long, sample == "B245" | ctrl == "yes"), aes(x=phage, y=time)) +
-  geom_boxplot(width=0.5, outlier.alpha = 0) +
-  geom_line(aes(group = sample, linetype = sample, color = sample), size = 0.8, alpha = 0.8, stat  = "summary") +
-  geom_jitter(aes(fill = sample), alpha = 0.7, width = 0.1, height = 0, size = 3, shape = 21) +
-  labs(shape="") +
-  ggtitle("Control samples") +
-  xlab("") + ylab("Time to ODmax") +
-  theme(axis.title.x = element_blank()) +
-  scale_x_discrete(labels=c("No phage","Phage")) +
-  theme(axis.text.x = element_text(angle = 45)) +
-  scale_fill_manual(values=cbPalette) +
-  scale_color_manual(values=cbPalette) +
-  theme_bw()
-
 fig4 <- fig_4A + fig_4B +plot_annotation(tag_levels = "A")
-ggsave(fig4, filename = "manuscript_figs/fig4.png", width = 9, height = 4)
+ggsave(fig4, filename = paste(figs_folder,"/fig4.png",sep=""), width = 9, height = 4)
 
-fig4_time <- fig_4A + fig_4A_time + fig_4B + fig_4B_time + plot_annotation(tag_levels = "A")
-ggsave(fig4_time, filename = "manuscript_figs/fig4_time.png", width = 9, height = 6)
 
+# fig_4B_time <- ggplot(data = subset(dadaOD_long, sample == "B245" | ctrl == "yes"), aes(x=phage, y=time)) +
+#   geom_boxplot(width=0.5, outlier.alpha = 0) +
+#   geom_line(aes(group = sample, linetype = sample, color = sample), size = 0.8, alpha = 0.8, stat  = "summary") +
+#   geom_jitter(aes(fill = sample), alpha = 0.7, width = 0.1, height = 0, size = 3, shape = 21) +
+#   labs(shape="") +
+#   ggtitle("Control samples") +
+#   xlab("") + ylab("Time to ODmax") +
+#   theme(axis.title.x = element_blank()) +
+#   scale_x_discrete(labels=c("No phage","Phage")) +
+#   theme(axis.text.x = element_text(angle = 45)) +
+#   scale_fill_manual(values=cbPalette) +
+#   scale_color_manual(values=cbPalette) +
+#   theme_bw()
+
+#Fig4_time shows the response in time-to-OD-max. This is done for reference and is not a published figure in the paper.
+#fig4_time <- fig_4A + fig_4A_time + fig_4B + fig_4B_time + plot_annotation(tag_levels = "A")
+#ggsave(fig4_time, filename = paste(figs_folder,"/fig4_time.png",sep=""), width = 9, height = 6)
+
+
+
+# Extract data source files
+fig_4A_datasource = fig4_A_data[, c("sample", "max_od", "Morphology","phage")]
+fig_4B_datasource = fig_4B_data[, c("sample", "max_od", "sample")]
+
+write.csv(fig_4A_datasource, paste(datasourcefolder,"/fig_4A_datasource.csv",sep=""))
+write.csv(fig_4B_datasource, paste(datasourcefolder,"/fig_4B_datasource.csv",sep=""))
 
 #### Spacers / morphology (Fig 5) and associated models ####
+
+dadaODSpacersAlllong$booleanNewSpacers <- ifelse(dadaODSpacersAlllong$totalSpacers == 0, "=0", "More than 0")
 
 phageFacetNames <- c(
   `yes` = "With phage",
   `no` = "No phage"
 )
 
-hello <- subset(dadaODSpacersAlllong, sample == "LW_M")
-
-booleanSpacerPlot_maxOD_LWM <- ggplot(data = subset(dadaODSpacersAlllong, sample == "LW_M"), 
-                                      aes(x = booleanNewSpacers, y = max_od, fill = Morphology, label = id)) +
+fig_5A_data = subset(dadaODSpacersAlllong, sample == "LW_M")
+fig_5A <- ggplot(data = fig_5A_data, aes(x = booleanNewSpacers, y = max_od, fill = Morphology, label = id)) +
   geom_boxplot(outlier.alpha = 0) +
   geom_jitter(height = 0, width = 0.05, aes(fill = Morphology), size = 2, alpha = 0.5, shape = 21) +
   scale_shape_manual(values=c(21,22)) +
@@ -446,8 +448,9 @@ booleanSpacerPlot_maxOD_LWM_time <- ggplot(data = subset(dadaODSpacersAlllong, s
   scale_x_discrete(labels=c("No new\nspacers","One or more\nnew spacers"))
 
 
-booleanSpacerPlot_maxOD_ShiehM <- ggplot(data = subset(dadaODSpacersAlllong, sample == "Shieh_M"), 
-                                         aes(x = booleanNewSpacers, y = max_od, fill = Morphology, label = id)) +
+#booleanSpacerPlot_maxOD_ShiehM
+fig_5B_data = subset(dadaODSpacersAlllong, sample == "Shieh_M")
+fig_5B <- ggplot(data = fig_5B_data, aes(x = booleanNewSpacers, y = max_od, fill = Morphology, label = id)) +
   geom_boxplot(outlier.alpha = 0) +
   geom_jitter(height = 0, width = 0.05, aes(fill = Morphology), size = 2, alpha = 0.5, shape = 21) +
   scale_shape_manual(values=c(21,22)) +
@@ -478,11 +481,19 @@ booleanSpacerPlot_maxOD_ShiehM_time <- ggplot(data = subset(dadaODSpacersAlllong
   scale_x_discrete(labels=c("No new\nspacers","One or more\nnew spacers"))
 
 
-spacerPlots <- booleanSpacerPlot_maxOD_LWM / booleanSpacerPlot_maxOD_ShiehM + plot_annotation(tag_levels = "A")
-ggsave(spacerPlots, filename = "manuscript_figs/fig_5.png", width = 7.5, height = 6)
+fig5 <- fig_5A / fig_5B + plot_annotation(tag_levels = "A")
+ggsave(fig5, filename = paste(figs_folder,"/fig5.png",sep=""), width = 7.5, height = 6)
 
 spacerPlots_time <- (booleanSpacerPlot_maxOD_LWM | booleanSpacerPlot_maxOD_LWM_time) / (booleanSpacerPlot_maxOD_ShiehM | booleanSpacerPlot_maxOD_ShiehM_time) + plot_annotation(tag_levels = "A")
-ggsave(spacerPlots_time, filename = "manuscript_figs/fig_5_time.png", width = 10, height = 7)
+ggsave(spacerPlots_time, filename = paste(figs_folder,"/fig_5_time.png",sep=""), width = 10, height = 7)
+
+# Extract data source files
+fig_5A_datasource = fig_5A_data[, c("booleanNewSpacers", "max_od", "Morphology","phage")]
+fig_5B_datasource = fig_5B_data[, c("booleanNewSpacers", "max_od", "Morphology","phage")]
+
+write.csv(fig_5A_datasource, paste(datasourcefolder,"/fig_5A_datasource.csv",sep=""))
+write.csv(fig_5B_datasource, paste(datasourcefolder,"/fig_5B_datasource.csv",sep=""))
+
 
 #Models for fig 5
 #LWM with phage
@@ -524,7 +535,10 @@ AIC(spacers_morphotype_ShiehM_pooled_model)
 
 
 #### Aeromonas experiment (Fig 6) and associated models ####
-spacerdata_21_totalspacers_plot <- ggplot(data = dada_21_subset, aes(x=Condition, y=totalspacers)) +
+
+fig_6_data = dada_21_subset
+
+fig_6_totalspacers<- ggplot(data = fig_6_data, aes(x=Condition, y=totalspacers)) +
   geom_boxplot() +
   geom_jitter(aes(colour = morphology), alpha = 0.5, width = 0.1, height = 0) +
   ylab("New spacers in a colony") +
@@ -536,9 +550,8 @@ spacerdata_21_totalspacers_plot <- ggplot(data = dada_21_subset, aes(x=Condition
   theme(legend.position = "none",
         axis.title.x = element_blank(),
         plot.title = element_text(hjust = 0.5))
-spacerdata_21_totalspacers_plot
 
-spacerdata_21_totalspacers_plot_C1 <- ggplot(data = dada_21_subset, aes(x=Condition, y=spacers_C1)) +
+fig_6_IIC_spacers <- ggplot(data = fig_6_data, aes(x=Condition, y=spacers_C1)) +
   geom_boxplot() +
   geom_jitter(aes(colour = morphology), alpha = 0.5, width = 0.2, height = 0) +
   ylab("II-C spacers") +
@@ -553,9 +566,8 @@ spacerdata_21_totalspacers_plot_C1 <- ggplot(data = dada_21_subset, aes(x=Condit
         axis.text.y = element_blank(),
         axis.ticks.y = element_blank(),
         plot.title = element_text(hjust = 0.5))
-spacerdata_21_totalspacers_plot_C1
 
-spacerdata_21_totalspacers_plot_C2 <- ggplot(data = dada_21_subset, aes(x=Condition, y=spacers_C2)) +
+fig_6_VIB_spacers <- ggplot(data = fig_6_data, aes(x=Condition, y=spacers_C2)) +
   geom_boxplot() +
   geom_jitter(aes(colour = morphology), alpha = 0.5, width = 0.2, height = 0) +
   ylab("VI-B spacers") +
@@ -569,11 +581,15 @@ spacerdata_21_totalspacers_plot_C2 <- ggplot(data = dada_21_subset, aes(x=Condit
         axis.text.y = element_blank(),
         axis.ticks.y = element_blank(),
         plot.title = element_text(hjust = 0.5))
-spacerdata_21_totalspacers_plot_C2
 
-fig_6_both_spacers_aeromonas <- spacerdata_21_totalspacers_plot + spacerdata_21_totalspacers_plot_C1 + spacerdata_21_totalspacers_plot_C2
+fig_6 <- fig_6_totalspacers + fig_6_IIC_spacers + fig_6_VIB_spacers
 
-ggsave(fig_6_both_spacers_aeromonas, filename = "manuscript_figs/Fig_6_both_spacers_aeromonas.png", width = 8, height = 3)
+ggsave(fig_6, filename = paste(figs_folder,"/fig6.png",sep=""), width = 8, height = 3)
+
+# Extract data source files
+fig_6_datasource = fig_6_data[, c("Condition", "totalspacers", "spacers_C1","spacers_C2")]
+
+write.csv(fig_6_datasource, paste(datasourcefolder,"/fig_6_datasource.csv",sep=""))
 
 #MODELS
 
@@ -595,9 +611,126 @@ dada_21_model2 <- glmmTMB(as.numeric(booleanNewSpacers) ~ Condition + (1|rep) + 
 
 summary(dada_21_model2)
 AIC(dada_21_model2)
+
+
+#### Growth competition experiment (Fig 7) ####
+
+dada_growth <- read.csv('tiitterit_musiinijatkokoe_221221.csv', header = TRUE, sep = ";", dec=",")
+dada_growth$condRep <- paste(dada_growth$condition, dada_growth$replicate,sep="")
+dada_growth$condRep <- as.factor(dada_growth$condRep)
+dada_growth_long <- gather(data = dada_growth, key = species, value = titer, columnare:aeromonas)
+dada_growth_long$titer <- as.numeric(dada_growth_long$titer)
+dada_growth_long_plot <- subset(dada_growth_long, condition != 6)
+
+dada_growth_long$cond_name <- as.factor(dada_growth_long$cond_name)
+
+
+cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#000000", "#CC79A7","#0072B2","#F0E442", "#D55E00")
+
+labels <- c(`Aero + col R` = "Aeromonas sp. + F. col R",
+            `Aero + col Z` = "Aeromonas sp. + F. col Z",
+            `Aeromonas` = "Aeromonas sp.",
+            `columnare R` = "F. columnare R",
+            `columnare Z` = "F. columnare Z")
+
+#plot aeromonas titers
+fig7 <- ggplot(data = dada_growth_long_plot, aes(x = day, y = titer)) +
+  geom_point(aes(color = species)) +
+  labs(color = "Species") +
+  geom_smooth(aes(color = species), method = "loess") +
+  facet_grid(~cond_name, labeller = as_labeller(labels)) +
+  scale_y_continuous(trans='log10') +
+  theme_bw() +
+  theme(legend.text = element_text(face = "italic")) +
+  scale_color_manual(values=cbPalette,labels = c("Aeromonas sp.", "F. columnare")) +
+  ylab("Bacterial titer (cfu/ml)") +
+  xlab("Day")
+
+ggsave(fig7, filename=paste(figs_folder,"/fig7.png",sep=""), height = 3, width = 10)
+
+# Extract data source files
+fig_7_datasource = dada_growth_long_plot[, c("day", "titer", "species")]
+
+write.csv(fig_7_datasource, paste(datasourcefolder,"/fig_7_datasource.csv",sep=""))
+
+dada_long$cond_name <- relevel(dada_long$cond_name,ref = "Aeromonas") # Declare LW_M as reference
+dada_long$condRep <- as.factor(dada_long$condRep)
+
+#using gamma distribution for the model with replicate as possible random effect
+# "is the titer of aeromonas different in the presence or absence of columnare (both Z and R), on day 3?
+
+#without random effect the AIC is >2 units smaller
+m1 <- glm(titer ~ cond_name,
+          family = Gamma("log"),
+          data = subset(dada_long, day > 0 & species == "aeromonas" & cond_name != "columnare R" & cond_name != "columnare Z" & cond_name != "neg ctrl" ))
+summary(m1)
+AIC(m1) #994.1869
+
+#alternative model with random effect
+m2 <- glmer(titer ~ cond_name + (1|condRep),
+            family = Gamma("log"),
+            data = subset(dada_long, day > 0 & species == "aeromonas" & cond_name != "columnare R" & cond_name != "columnare Z" & cond_name != "neg ctrl" ))
+summary(m2)
+AIC(m2) #998.1869
+
+
 #### Supplementary plots and associated models ####
 
-#Effect of time on OD in follow-up experiment
+#### Supp. Fig 1 ####
+supp_fig_1_phage <- ggplot(data = dadaOD_long, aes(x=plate_phage, y=max_od)) +
+  ggtitle("Max OD (phage)") +
+  geom_boxplot(width=0.5) +
+  geom_point(aes(fill = ancestral), shape = 21, alpha = 0.7) +
+  xlab("Plate ID") + ylab("Max OD") +
+  theme(legend.position = "none")
+
+supp_fig_1_nophage <- ggplot(data = dadaOD_long, aes(x=plate_nophage, y=max_od)) +
+  ggtitle("Max OD (no phage)") +
+  geom_boxplot(width=0.5) +
+  geom_point(aes(fill = ancestral), shape = 21, alpha = 0.7) +
+  xlab("Plate ID") + ylab("Max OD")
+
+supp_fig_1 <- supp_fig_1_phage + supp_fig_1_nophage + plot_annotation("Maximum OD on different plates")
+ggsave(supp_fig_1, filename = paste(figs_folder,"/supp_fig_1.png",sep=""))
+
+#### Supp. Fig 2 and associated models ####
+supp_fig_2A <- ggplot(data = titer_stats_LW_all, aes(x = sample, y = bac_tot)) +
+  geom_boxplot() +
+  geom_point(shape = 21, size = 2) +
+  facet_grid(~week) +
+  scale_y_continuous(trans='log10') +
+  ylab("Bacterial titer (cfu/ml)") +
+  xlab("Week") +
+  theme(axis.text.x = element_text(angle = 45))
+
+supp_fig_2B <- ggplot(data = titer_stats_LW_all, aes(x = sample, y = phage_titer)) +
+  geom_boxplot() +
+  geom_point(shape = 21, size = 2) +
+  facet_grid(~week) +
+  scale_y_continuous(trans='log10') +
+  ylab("Phage titer (pfu/ml)") +
+  xlab("Week") +
+  theme(axis.text.x = element_text(angle = 45))
+
+supp_fig_2 <- supp_fig_2A / supp_fig_2B + plot_annotation(tag_levels = "A")
+ggsave(supp_fig_2, file = paste(figs_folder,"/supp_fig_2.png",sep=""), height = 8, width = 10.9)
+
+# Phage titer models LW and LWM
+titer_stats_LW_all <- subset(titers, (sample == "LW" | sample == "LW_M") & week > 1 & ctrl == "no")
+titer_stats_LW <- subset(titers, (sample == "LW" | sample == "LW_M") & week >= 9 & ctrl == "no")
+
+model_phagetiter_LW_LWM_wk9_16 <- glmmTMB(data = titer_stats_LW, phage_titer ~ sample, family = Gamma("log"))
+summary(model_phagetiter_LW_LWM_wk9_16)
+AIC(model_phagetiter_LW_LWM_wk9_16)
+
+#Bacterial titer models in LW and LWM
+model_bacterial_titer_LW_LWM_wk9_16 <- glm(data = titer_stats_LW_all, bac_tot ~ sample)
+summary(model_bacterial_titer_LW_LWM_wk9_16)
+AIC(model_bacterial_titer_LW_LWM_wk9_16)
+
+#### Supp. Fig 3 ####
+
+point_alpha = 0.7
 plot_extractTimeAndTimetoMaxODP <- ggplot(data = subset(dadaOD_long, phage == "yes" & ancestral == "no"), aes(x = extractTime, y = time)) +
   geom_point(size = 1.5, alpha = point_alpha, shape = 21) +
   facet_grid(~sample) +
@@ -622,12 +755,12 @@ plot_extractTimeAndMaxODNP <- ggplot(data = subset(dadaOD_long, phage == "no" & 
   ggtitle("") +
   xlab("Extraction time") + ylab("")
 
-extractionTimePlots <- (plot_extractTimeAndTimetoMaxODP | plot_extractTimeAndTimetoMaxODNP) / (plot_extractTimeAndMaxODP | plot_extractTimeAndMaxODNP) +
+supp_fig_3 <- (plot_extractTimeAndTimetoMaxODP | plot_extractTimeAndTimetoMaxODNP) / (plot_extractTimeAndMaxODP | plot_extractTimeAndMaxODNP) +
   plot_annotation("Effect of extraction time on growth")
-ggsave(extractionTimePlots, filename = "manuscript_figs/SI/extractTimePlots.png", height = 4, width = 8)
+ggsave(supp_fig_3, filename = paste(figs_folder,"/supp_fig_3.png",sep=""), height = 4, width = 8)
 
-
-titers_21_plot_all <- ggplot(data = subset(data_21_titers_long, titer_type == "titer_total"), 
+#### Supp. Fig 4 ####
+supp_fig_4 <- ggplot(data = subset(data_21_titers_long, titer_type == "titer_total"), 
                              aes(x=as.factor(sampling_day),y=value), group = species) +
   stat_summary(aes(y = value, group = species, color= species), fun=mean, geom="line") +
   geom_point(aes(color = species), alpha = 0.5) +
@@ -635,11 +768,9 @@ titers_21_plot_all <- ggplot(data = subset(data_21_titers_long, titer_type == "t
   xlab("Sampling day") +
   scale_y_continuous(trans='log10') +
   facet_grid(~condition_alt) +
-  theme_minimal() +
   scale_colour_manual(values=cbPalette)
-titers_21_plot_all
 
-ggsave(titers_21_plot_all, filename = "manuscript_figs/SI/SI_fig_4_titers_aeromonasExp_all.png", width = 16, height = 3)
+ggsave(supp_fig_4, filename = paste(figs_folder,"/supp_fig_4.png",sep=""), width = 16, height = 3)
 
 
 library(lme4)
@@ -667,7 +798,7 @@ summary(lmer(time ~ extractTime + (1|rep), data = subset(dadaOD_long, phage == "
 
 #### Models ####
 
-# Follow-up growth experiment overall (fig 4A)
+# Follow-up growth experiment overall (fig 4Aba)
 dadaOD_long$sample <- relevel(dadaOD_long$sample,ref = "B245") # Declare B245 as reference
 hist(subset(dadaOD_long, ctrl =="no")$max_od)
 treatODphage_nonrelative <- glmmTMB(max_od ~ phage * sample + (1|rep) + (1|id) + (1|time), 
@@ -717,10 +848,10 @@ AIC(spacersByTreatment_model)
 #### Other ####
 #table for showing OD-max and time-to-OD-max
 od_table <- subset(dadaOD_long, ancestral == "no" & ctrl == "no")
-od_table <- select(od_table, sample,max_od,time,id,phage)
+od_table <- od_table[,c("sample","max_od","time","id","phage")]
 od_table <- od_table[order(as.character(od_table$id)),]
 rownames(od_table) <- NULL
-write.csv(od_table, "od_metrics.csv")
+write.csv(od_table, "03_other/od_metrics.csv")
 
 #correlation between OD-max and time-to-OD-max
 od_table_NA <- na.omit(od_table)
@@ -736,3 +867,4 @@ cor.test(od_table_NA_phage$max_od, od_table_NA_phage$time)
 
 od_table_NA_nophage <- subset(od_table_NA, phage == "no")
 cor.test(od_table_NA_nophage$max_od, od_table_NA_nophage$time)
+
