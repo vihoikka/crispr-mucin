@@ -34,19 +34,19 @@ data_21_titers_long <- melt(data_21_titers,
 data_21_titers_long <- na.omit(data_21_titers_long)
 
 #phage titers
-titers <- fread('phage_titers_280520.csv') #read as data table
+titers <- fread('data_input/phage_titers_2020.csv') #read as data table
 titers$z_prop <- titers$bac_z/titers$bac_tot
 titers$r_prop <- titers$bac_r/titers$bac_tot
 titers$bac_phage_difference <- titers$phage_titer - titers$bac_tot
 
 #spacer accumulation
-spacerTime <- fread('spacer_accumulation.csv')
+spacerTime <- fread('data_input/spacer_accumulation.csv')
 
 #bacterial isolate times
 columns <- c("sample","")
 
 #mutation file
-mutDada <- fread('mutCounts_070520.csv') #read as data table
+mutDada <- fread('data_input/mutCounts_2020.csv') #read as data table
 
 #Library preparations
 # install.packages("ggplot2")
@@ -160,8 +160,8 @@ bac_titers <- ggplot(data = bac_titer_data, aes(x=week,y=bac_tot)) +
   scale_linetype_manual(values=linetypes) +
   theme_bw()
 
-titerplot <- phage_titers / bac_titers + plot_annotation(tag_levels = 'A')
-ggsave(titerplot, filename = paste(figs_folder,"/fig2.png",sep=""), width = 8.5, height = 5)
+titerplot <- phage_titers / bac_titers + plot_annotation(tag_levels = 'a')
+ggsave(titerplot, filename = paste(figs_folder,"/fig2.pdf",sep=""), width = 8.5, height = 5)
 
 # Extract data source files
 fig_2A_datasource = phage_titer_data[,c("sample","phage_titer", "rep")]
@@ -296,8 +296,8 @@ plot_mutTypes
 
 fig3a <- spacers_time_plot3
 fig3bc <- (plot_spacersSamplePanel + plot_morphotypeProportions) + plot_spacer() + plot_layout(widths = c(2,2,1))
-fig3 <- fig3a / fig3bc + plot_annotation(tag_levels = 'A')
-ggsave(fig3, filename = paste(figs_folder,"/fig3.png",sep=""), height = 5.5, width = 11)
+fig3 <- fig3a / fig3bc + plot_annotation(tag_levels = 'a')
+ggsave(fig3, filename = paste(figs_folder,"/fig3.pdf",sep=""), height = 5.5, width = 11)
 
 # Extract data source files
 fig_3A_IIC_datasource = spacerTimeLongC1Per_screened
@@ -374,8 +374,8 @@ fig_4B <- ggplot(data = fig_4B_data, aes(x=phage, y=max_od)) +
   scale_color_manual(values=cbPalette) +
   theme_bw()
 
-fig4 <- fig_4A + fig_4B +plot_annotation(tag_levels = "A")
-ggsave(fig4, filename = paste(figs_folder,"/fig4.png",sep=""), width = 9, height = 4)
+fig4 <- fig_4A + fig_4B +plot_annotation(tag_levels = "a")
+ggsave(fig4, filename = paste(figs_folder,"/fig4.pdf",sep=""), width = 9, height = 4)
 
 
 # fig_4B_time <- ggplot(data = subset(dadaOD_long, sample == "B245" | ctrl == "yes"), aes(x=phage, y=time)) +
@@ -394,7 +394,7 @@ ggsave(fig4, filename = paste(figs_folder,"/fig4.png",sep=""), width = 9, height
 
 #Fig4_time shows the response in time-to-OD-max. This is done for reference and is not a published figure in the paper.
 #fig4_time <- fig_4A + fig_4A_time + fig_4B + fig_4B_time + plot_annotation(tag_levels = "A")
-#ggsave(fig4_time, filename = paste(figs_folder,"/fig4_time.png",sep=""), width = 9, height = 6)
+#ggsave(fig4_time, filename = paste(figs_folder,"/fig4_time.pdf",sep=""), width = 9, height = 6)
 
 
 
@@ -481,11 +481,11 @@ booleanSpacerPlot_maxOD_ShiehM_time <- ggplot(data = subset(dadaODSpacersAlllong
   scale_x_discrete(labels=c("No new\nspacers","One or more\nnew spacers"))
 
 
-fig5 <- fig_5A / fig_5B + plot_annotation(tag_levels = "A")
-ggsave(fig5, filename = paste(figs_folder,"/fig5.png",sep=""), width = 7.5, height = 6)
+fig5 <- fig_5A / fig_5B + plot_annotation(tag_levels = "a")
+ggsave(fig5, filename = paste(figs_folder,"/fig5.pdf",sep=""), width = 7.5, height = 6)
 
-spacerPlots_time <- (booleanSpacerPlot_maxOD_LWM | booleanSpacerPlot_maxOD_LWM_time) / (booleanSpacerPlot_maxOD_ShiehM | booleanSpacerPlot_maxOD_ShiehM_time) + plot_annotation(tag_levels = "A")
-ggsave(spacerPlots_time, filename = paste(figs_folder,"/fig_5_time.png",sep=""), width = 10, height = 7)
+spacerPlots_time <- (booleanSpacerPlot_maxOD_LWM | booleanSpacerPlot_maxOD_LWM_time) / (booleanSpacerPlot_maxOD_ShiehM | booleanSpacerPlot_maxOD_ShiehM_time) + plot_annotation(tag_levels = "a")
+ggsave(spacerPlots_time, filename = paste(figs_folder,"/fig_5_time.pdf",sep=""), width = 10, height = 7)
 
 # Extract data source files
 fig_5A_datasource = fig_5A_data[, c("booleanNewSpacers", "max_od", "Morphology","phage")]
@@ -584,7 +584,7 @@ fig_6_VIB_spacers <- ggplot(data = fig_6_data, aes(x=Condition, y=spacers_C2)) +
 
 fig_6 <- fig_6_totalspacers + fig_6_IIC_spacers + fig_6_VIB_spacers
 
-ggsave(fig_6, filename = paste(figs_folder,"/fig6.png",sep=""), width = 8, height = 3)
+ggsave(fig_6, filename = paste(figs_folder,"/fig6.pdf",sep=""), width = 8, height = 3)
 
 # Extract data source files
 fig_6_datasource = fig_6_data[, c("Condition", "totalspacers", "spacers_C1","spacers_C2")]
@@ -646,10 +646,10 @@ fig7 <- ggplot(data = dada_growth_long_plot, aes(x = day, y = titer)) +
   ylab("Bacterial titer (cfu/ml)") +
   xlab("Day")
 
-ggsave(fig7, filename=paste(figs_folder,"/fig7.png",sep=""), height = 3, width = 10)
+ggsave(fig7, filename=paste(figs_folder,"/fig7.pdf",sep=""), height = 3, width = 10)
 
 # Extract data source files
-fig_7_datasource = dada_growth_long_plot[, c("day", "titer", "species")]
+fig_7_datasource = dada_growth_long_plot
 
 write.csv(fig_7_datasource, paste(datasourcefolder,"/fig_7_datasource.csv",sep=""))
 
@@ -691,7 +691,7 @@ supp_fig_1_nophage <- ggplot(data = dadaOD_long, aes(x=plate_nophage, y=max_od))
   xlab("Plate ID") + ylab("Max OD")
 
 supp_fig_1 <- supp_fig_1_phage + supp_fig_1_nophage + plot_annotation("Maximum OD on different plates")
-ggsave(supp_fig_1, filename = paste(figs_folder,"/supp_fig_1.png",sep=""))
+ggsave(supp_fig_1, filename = paste(figs_folder,"/supp_fig_1.pdf",sep=""))
 
 #### Supp. Fig 2 and associated models ####
 supp_fig_2A <- ggplot(data = titer_stats_LW_all, aes(x = sample, y = bac_tot)) +
@@ -712,8 +712,8 @@ supp_fig_2B <- ggplot(data = titer_stats_LW_all, aes(x = sample, y = phage_titer
   xlab("Week") +
   theme(axis.text.x = element_text(angle = 45))
 
-supp_fig_2 <- supp_fig_2A / supp_fig_2B + plot_annotation(tag_levels = "A")
-ggsave(supp_fig_2, file = paste(figs_folder,"/supp_fig_2.png",sep=""), height = 8, width = 10.9)
+supp_fig_2 <- supp_fig_2A / supp_fig_2B + plot_annotation(tag_levels = "a")
+ggsave(supp_fig_2, file = paste(figs_folder,"/supp_fig_2.pdf",sep=""), height = 8, width = 10.9)
 
 # Phage titer models LW and LWM
 titer_stats_LW_all <- subset(titers, (sample == "LW" | sample == "LW_M") & week > 1 & ctrl == "no")
@@ -757,7 +757,7 @@ plot_extractTimeAndMaxODNP <- ggplot(data = subset(dadaOD_long, phage == "no" & 
 
 supp_fig_3 <- (plot_extractTimeAndTimetoMaxODP | plot_extractTimeAndTimetoMaxODNP) / (plot_extractTimeAndMaxODP | plot_extractTimeAndMaxODNP) +
   plot_annotation("Effect of extraction time on growth")
-ggsave(supp_fig_3, filename = paste(figs_folder,"/supp_fig_3.png",sep=""), height = 4, width = 8)
+ggsave(supp_fig_3, filename = paste(figs_folder,"/supp_fig_3.pdf",sep=""), height = 4, width = 8)
 
 #### Supp. Fig 4 ####
 supp_fig_4 <- ggplot(data = subset(data_21_titers_long, titer_type == "titer_total"), 
@@ -770,7 +770,7 @@ supp_fig_4 <- ggplot(data = subset(data_21_titers_long, titer_type == "titer_tot
   facet_grid(~condition_alt) +
   scale_colour_manual(values=cbPalette)
 
-ggsave(supp_fig_4, filename = paste(figs_folder,"/supp_fig_4.png",sep=""), width = 16, height = 3)
+ggsave(supp_fig_4, filename = paste(figs_folder,"/supp_fig_4.pdf",sep=""), width = 16, height = 3)
 
 
 library(lme4)
