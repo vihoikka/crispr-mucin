@@ -632,31 +632,8 @@ AIC(m2) #998.1869
 
 #### Supplementary plots and associated models ####
 
-#### Supp. Fig 1 ####
-supp_fig_1_phage <- ggplot(data = subset(dadaOD_long, phage == "yes") , aes(x=plate_phage, y=max_od)) +
-  ggtitle("Phage") +
-  geom_boxplot(width=0.5) +
-  geom_text(aes(label=..count..), y=0.1, stat='count', colour="red", size=4, alpha=0.7) +
-  ylim(c(0.1,0.7)) +
-  geom_point(aes(fill = ancestral), shape = 21, alpha = 0.7) +
-  xlab("Plate ID") + ylab("Max OD") +
-  theme_bw() +
-  theme(legend.position = "none")
-
-supp_fig_1_nophage <- ggplot(data = subset(dadaOD_long, phage == "no"), aes(x=plate_nophage, y=max_od)) +
-  ggtitle("No phage") +
-  geom_boxplot(width=0.5) +
-  geom_text(aes(label=..count..), y=0.1, stat='count', colour="red", size=4, alpha=0.7) +
-  ylim(c(0.1,0.7)) +
-  geom_point(aes(fill = ancestral), shape = 21, alpha = 0.7) +
-  theme_bw() +
-  xlab("Plate ID") + ylab("Max OD")
-
-supp_fig_1 <- supp_fig_1_phage + supp_fig_1_nophage + plot_annotation(tag_levels = "a")
-ggsave(supp_fig_1, filename = paste(figs_folder,"/supp_fig_1.png",sep=""),  height = 4, width = 8)
-
-#### Supp. Fig 2 and associated models ####
-supp_fig_2A <- ggplot(data = titer_stats_LW_all, aes(x = sample, y = bac_tot)) +
+#### Supp. Fig 1 and associated models ####
+supp_fig_1A <- ggplot(data = titer_stats_LW_all, aes(x = sample, y = bac_tot)) +
   geom_boxplot() +
   geom_point(shape = 21, size = 2) +
   #geom_text(aes(label=..count..), y=2, stat='count', colour="red", size=4, alpha=0.7) +
@@ -667,7 +644,7 @@ supp_fig_2A <- ggplot(data = titer_stats_LW_all, aes(x = sample, y = bac_tot)) +
   scale_y_continuous(trans='log10') +
   theme_bw() 
 
-supp_fig_2B <- ggplot(data = titer_stats_LW_all, aes(x = sample, y = phage_titer)) +
+supp_fig_1B <- ggplot(data = titer_stats_LW_all, aes(x = sample, y = phage_titer)) +
   geom_boxplot() +
   geom_point(shape = 21, size = 2) +
   #geom_text(aes(label=..count..), y=6, stat='count', colour="red", size=4, alpha=0.7) +
@@ -678,8 +655,8 @@ supp_fig_2B <- ggplot(data = titer_stats_LW_all, aes(x = sample, y = phage_titer
   scale_y_continuous(trans='log10') +
   theme_bw()
 
-supp_fig_2 <- supp_fig_2A / supp_fig_2B + plot_annotation(tag_levels = "a")
-ggsave(supp_fig_2, file = paste(figs_folder,"/supp_fig_2.png",sep=""), height = 8, width = 10.9)
+supp_fig_1 <- supp_fig_1A / supp_fig_1B + plot_annotation(tag_levels = "a")
+ggsave(supp_fig_1, file = paste(figs_folder,"/supp_fig_1.png",sep=""), height = 8, width = 10.9)
 
 # Phage titer models LW and LWM
 titer_stats_LW_all <- subset(titers, (sample == "LW" | sample == "LW_M") & week > 1 & ctrl == "no")
@@ -694,7 +671,47 @@ model_bacterial_titer_LW_LWM_wk9_16 <- glm(data = titer_stats_LW_all, bac_tot ~ 
 summary(model_bacterial_titer_LW_LWM_wk9_16)
 AIC(model_bacterial_titer_LW_LWM_wk9_16)
 
+#### Supp. Fig 2 ####
+supp_fig_2 <- ggplot(data = subset(data_21_titers_long, titer_type == "titer_total"), 
+                     aes(x=as.factor(sampling_day),y=value), group = species) +
+  stat_summary(aes(y = value, group = species, color= species), fun=mean, geom="line") +
+  geom_point(aes(color = species), alpha = 0.5) +
+  ylab("Titer") +
+  xlab("Sampling day") +
+  scale_y_continuous(trans='log10') +
+  facet_grid(~condition_alt) +
+  scale_colour_manual(values=cbPalette)
+
+ggsave(supp_fig_2, filename = paste(figs_folder,"/supp_fig_2.png",sep=""), width = 16, height = 3)
+
 #### Supp. Fig 3 ####
+fig3A_data = subset(dadaOD_long, phage == "yes")
+fig3A_data <- fig3A_data[!is.na(fig3A_data$plate_phage),]
+supp_fig_3_phage <- ggplot(data = fig3A_data , aes(x=plate_phage, y=max_od)) +
+  ggtitle("Phage") +
+  geom_boxplot(width=0.5) +
+  geom_text(aes(label=..count..), y=0.1, stat='count', colour="red", size=4, alpha=0.7) +
+  ylim(c(0.1,0.7)) +
+  geom_point(aes(fill = ancestral), shape = 21, alpha = 0.7) +
+  xlab("Plate ID") + ylab("Max OD") +
+  theme_bw() +
+  theme(legend.position = "none")
+
+fig3B_data = subset(dadaOD_long, phage == "no")
+fig3B_data <- fig3B_data[!is.na(fig3B_data$plate_nophage),]
+supp_fig_3_nophage <- ggplot(data = fig3B_data, aes(x=plate_nophage, y=max_od)) +
+  ggtitle("No phage") +
+  geom_boxplot(width=0.5) +
+  geom_text(aes(label=..count..), y=0.1, stat='count', colour="red", size=4, alpha=0.7) +
+  ylim(c(0.1,0.7)) +
+  geom_point(aes(fill = ancestral), shape = 21, alpha = 0.7) +
+  theme_bw() +
+  xlab("Plate ID") + ylab("Max OD")
+
+supp_fig_3 <- supp_fig_3_phage + supp_fig_3_nophage + plot_annotation(tag_levels = "a")
+ggsave(supp_fig_3, filename = paste(figs_folder,"/supp_fig_3.png",sep=""),  height = 4, width = 8)
+
+#### Supp. Fig 4 ####
 
 point_alpha = 0.7
 plot_extractTimeAndTimetoMaxODP <- ggplot(data = subset(dadaOD_long, phage == "yes" & ancestral == "no"), aes(x = extractTime, y = time)) +
@@ -725,22 +742,8 @@ plot_extractTimeAndMaxODNP <- ggplot(data = subset(dadaOD_long, phage == "no" & 
   xlab("Extraction time") + ylab("") +
   theme_bw()
 
-supp_fig_3 <- (plot_extractTimeAndTimetoMaxODP | plot_extractTimeAndTimetoMaxODNP) / (plot_extractTimeAndMaxODP | plot_extractTimeAndMaxODNP)
-ggsave(supp_fig_3, filename = paste(figs_folder,"/supp_fig_3.png",sep=""), height = 4, width = 8)
-
-#### Supp. Fig 4 ####
-supp_fig_4 <- ggplot(data = subset(data_21_titers_long, titer_type == "titer_total"), 
-                             aes(x=as.factor(sampling_day),y=value), group = species) +
-  stat_summary(aes(y = value, group = species, color= species), fun=mean, geom="line") +
-  geom_point(aes(color = species), alpha = 0.5) +
-  ylab("Titer") +
-  xlab("Sampling day") +
-  scale_y_continuous(trans='log10') +
-  facet_grid(~condition_alt) +
-  scale_colour_manual(values=cbPalette)
-
-ggsave(supp_fig_4, filename = paste(figs_folder,"/supp_fig_4.png",sep=""), width = 16, height = 3)
-
+supp_fig_4 <- (plot_extractTimeAndTimetoMaxODP | plot_extractTimeAndTimetoMaxODNP) / (plot_extractTimeAndMaxODP | plot_extractTimeAndMaxODNP)
+ggsave(supp_fig_4, filename = paste(figs_folder,"/supp_fig_4.png",sep=""), height = 4, width = 8)
 
 library(lme4)
 #Modeling extraction time on ODMAX
@@ -836,3 +839,4 @@ cor.test(od_table_NA_phage$max_od, od_table_NA_phage$time)
 
 od_table_NA_nophage <- subset(od_table_NA, phage == "no")
 cor.test(od_table_NA_nophage$max_od, od_table_NA_nophage$time)
+
